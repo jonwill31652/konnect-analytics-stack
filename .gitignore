@@ -1,0 +1,31 @@
+# Secrets and real config - never commit
+.env
+config.py
+*.secret
+*token*
+service-account*.json
+
+# Extracted data - pseudonymized, but still not committed
+csv/
+*.csv
+data/
+exports/
+
+# Power BI working files and caches
+*.pbix
+*.abf
+.pbi/
+**/.pbi/
+cache.abf
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

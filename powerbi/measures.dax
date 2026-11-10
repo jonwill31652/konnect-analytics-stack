@@ -1,0 +1,357 @@
+// Konnect Gaming analytics - DAX measures
+// Semantic model: 104 measures across 10 display folders.
+// Table and column names are the model's own schema; no secrets or PII appear in DAX.
+// Exported from the live Power BI model (TMDL), lightly formatted for reading.
+
+
+// ============================================================
+// Players  (9 measures)
+// ============================================================
+
+Players =
+    COUNTROWS(Users)
+
+'Players (running total)' =
+    CALCULATE(COUNTROWS(Users), FILTER(ALL('Calendar'[Date]), 'Calendar'[Date] <= MAX('Calendar'[Date])))
+
+'Onboarded Players' =
+    CALCULATE(COUNTROWS(Users), KEEPFILTERS(Users[onboardingComplete] = TRUE()))
+
+'Onboarding Rate' =
+    DIVIDE([Onboarded Players], [Players])
+
+'Players Who Competed' =
+    CALCULATE(COUNTROWS(Users), KEEPFILTERS(Users[totalEntered] > 0))
+
+'Activation Rate' =
+    DIVIDE([Players Who Competed], [Players])
+
+'Active Last 7 Days' =
+    CALCULATE(COUNTROWS(Users), KEEPFILTERS(Users[lastActiveAt] >= UTCNOW() - 7))
+
+'Active Last 30 Days' =
+    CALCULATE(COUNTROWS(Users), KEEPFILTERS(Users[lastActiveAt] >= UTCNOW() - 30))
+
+'Discord Linked Players' =
+    CALCULATE(COUNTROWS(Users), KEEPFILTERS(Users[discordConnections count] > 0))
+
+// ============================================================
+// Events  (13 measures)
+// ============================================================
+
+Events =
+    CALCULATE(COUNTROWS(Tournaments), KEEPFILTERS(Tournaments[isTest] <> TRUE()))
+
+'Completed Events' =
+    CALCULATE(COUNTROWS(Tournaments), KEEPFILTERS(Tournaments[isTest] <> TRUE()), KEEPFILTERS(Tournaments[status] = "complete"))
+
+'Cancelled Events' =
+    CALCULATE(COUNTROWS(Tournaments), KEEPFILTERS(Tournaments[isTest] <> TRUE()), KEEPFILTERS(Tournaments[status] = "cancelled"))
+
+'Upcoming Events' =
+    CALCULATE(COUNTROWS(Tournaments), KEEPFILTERS(Tournaments[isTest] <> TRUE()), KEEPFILTERS(Tournaments[status] = "open"))
+
+'Event Completion Rate' =
+    DIVIDE([Completed Events], [Completed Events] + [Cancelled Events])
+
+Registrations =
+    CALCULATE(COUNTROWS(Registrations), KEEPFILTERS(Registrations[isTest] <> TRUE()), KEEPFILTERS(Tournaments[isTest] <> TRUE()))
+
+'Check-ins' =
+    CALCULATE(COUNTROWS(Registrations), KEEPFILTERS(Registrations[isTest] <> TRUE()), KEEPFILTERS(Tournaments[isTest] <> TRUE()), KEEPFILTERS(Registrations[checkedIn] = TRUE()))
+
+'Check-in Rate' =
+    DIVIDE([Check-ins], [Registrations])
+
+'Unique Entrants' =
+    CALCULATE(DISTINCTCOUNT(Registrations[userId]), KEEPFILTERS(Registrations[isTest] <> TRUE()), KEEPFILTERS(Tournaments[isTest] <> TRUE()))
+
+'Avg Checked-in Field (completed)' =
+    DIVIDE(CALCULATE([Check-ins], KEEPFILTERS(Tournaments[status] = "complete")), [Completed Events])
+
+'Avg Registrations per Event' =
+    DIVIDE([Registrations], [Events])
+
+'Repeat Entrants' =
+    COUNTROWS(FILTER(VALUES(Registrations[userId]), CALCULATE(COUNTROWS(Registrations), KEEPFILTERS(Registrations[isTest] <> TRUE()), KEEPFILTERS(Tournaments[isTest] <> TRUE())) >= 2))
+
+'Repeat Entrant Rate' =
+    DIVIDE([Repeat Entrants], [Unique Entrants])
+
+// ============================================================
+// Matches  (5 measures)
+// ============================================================
+
+'Matches Played' =
+    CALCULATE(COUNTROWS(Matches), KEEPFILTERS(Tournaments[isTest] <> TRUE()), KEEPFILTERS(Matches[status] = "complete"))
+
+Forfeits =
+    CALCULATE(COUNTROWS(Matches), KEEPFILTERS(Tournaments[isTest] <> TRUE()), KEEPFILTERS(Matches[flowForfeit] = TRUE()))
+
+'Forfeit Rate' =
+    DIVIDE([Forfeits], [Matches Played])
+
+'Disputed Matches' =
+    CALCULATE(COUNTROWS(Matches), KEEPFILTERS(Tournaments[isTest] <> TRUE()), KEEPFILTERS(NOT ISBLANK(Matches[disputedAt])))
+
+'Avg Match Minutes' =
+    CALCULATE(AVERAGEX(FILTER(Matches, NOT ISBLANK(Matches[liveAt]) && NOT ISBLANK(Matches[endedAt]) && Matches[endedAt] > Matches[liveAt]), DATEDIFF(Matches[liveAt], Matches[endedAt], MINUTE)), KEEPFILTERS(Tournaments[isTest] <> TRUE()))
+
+// ============================================================
+// Notifications  (4 measures)
+// ============================================================
+
+'Notifications Sent' =
+    CALCULATE(COUNTROWS('Notification Events'), KEEPFILTERS('Notification Events'[status] = "sent"))
+
+'Notifications Failed' =
+    CALCULATE(COUNTROWS('Notification Events'), KEEPFILTERS('Notification Events'[status] = "failed"))
+
+'Notifications Opened' =
+    CALCULATE(COUNTROWS('Notification Events'), KEEPFILTERS('Notification Events'[openCount] > 0))
+
+'Notification Open Rate' =
+    DIVIDE([Notifications Opened], [Notifications Sent])
+
+// ============================================================
+// Product Health  (8 measures)
+// ============================================================
+
+'DAU (latest)' =
+    VAR d = CALCULATE(MAX('Product Metrics'[Date]), NOT ISBLANK('Product Metrics'[dau])) RETURN CALCULATE(MAX('Product Metrics'[dau]), 'Product Metrics'[Date] = d)
+
+'WAU (latest)' =
+    VAR d = CALCULATE(MAX('Product Metrics'[Date]), NOT ISBLANK('Product Metrics'[wau])) RETURN CALCULATE(MAX('Product Metrics'[wau]), 'Product Metrics'[Date] = d)
+
+'MAU (latest)' =
+    VAR d = CALCULATE(MAX('Product Metrics'[Date]), NOT ISBLANK('Product Metrics'[mau])) RETURN CALCULATE(MAX('Product Metrics'[mau]), 'Product Metrics'[Date] = d)
+
+'Avg DAU' =
+    AVERAGE('Product Metrics'[dau])
+
+'Avg D7 Retention' =
+    AVERAGE('Product Metrics'[d7Pct])
+
+'Discord Members (latest)' =
+    VAR d = CALCULATE(MAX('Metrics Daily'[Date]), NOT ISBLANK('Metrics Daily'[community discordMembers])) RETURN CALCULATE(MAX('Metrics Daily'[community discordMembers]), 'Metrics Daily'[Date] = d)
+
+'Instagram Followers (latest)' =
+    VAR d = CALCULATE(MAX('Metrics Daily'[Date]), NOT ISBLANK('Metrics Daily'[community igFollowers])) RETURN CALCULATE(MAX('Metrics Daily'[community igFollowers]), 'Metrics Daily'[Date] = d)
+
+'Infra Cost USD' =
+    SUM('Metrics Daily'[infra estimatedCostUsd])
+
+// ============================================================
+// Scene  (2 measures)
+// ============================================================
+
+'Discovered Events' =
+    COUNTROWS('External Tournaments')
+
+'Discovered Entrants' =
+    SUM('External Tournaments'[numEntrants])
+
+// ============================================================
+// Features  (21 measures)
+// ============================================================
+
+'Feature People (weekly)' =
+    CALCULATE(SUM('Feature Usage Weekly'[people]), KEEPFILTERS('Feature Usage Weekly'[is feature] = 1))
+
+'Feature Signed In People (weekly)' =
+    CALCULATE(SUM('Feature Usage Weekly'[signed in people]), KEEPFILTERS('Feature Usage Weekly'[is feature] = 1))
+
+'Last Full Week (Monday)' =
+    CALCULATE(MAX('Feature Usage Weekly'[week start]), REMOVEFILTERS('Feature List'), REMOVEFILTERS('Feature Usage Weekly'[feature], 'Feature Usage Weekly'[is feature]), KEEPFILTERS('Feature Usage Weekly'[complete week] = 1))
+
+'Feature People (last full week)' =
+    VAR w = [Last Full Week (Monday)] RETURN CALCULATE([Feature People (weekly)], 'Feature Usage Weekly'[week start] = w)
+
+'Feature Signed In People (last full week)' =
+    VAR w = [Last Full Week (Monday)] RETURN CALCULATE([Feature Signed In People (weekly)], 'Feature Usage Weekly'[week start] = w)
+
+'Feature New People (last full week)' =
+    VAR w = [Last Full Week (Monday)] RETURN CALCULATE(SUM('Feature Usage Weekly'[new people]), KEEPFILTERS('Feature Usage Weekly'[is feature] = 1), 'Feature Usage Weekly'[week start] = w)
+
+'Feature Returning People (last full week)' =
+    VAR w = [Last Full Week (Monday)] RETURN CALCULATE(SUM('Feature Usage Weekly'[returning people]), KEEPFILTERS('Feature Usage Weekly'[is feature] = 1), 'Feature Usage Weekly'[week start] = w)
+
+'Avg Weekly People (full weeks)' =
+    VAR wks = CALCULATE(DISTINCTCOUNT('Feature Usage Weekly'[week start]), REMOVEFILTERS('Feature List'), REMOVEFILTERS('Feature Usage Weekly'[feature], 'Feature Usage Weekly'[is feature]), KEEPFILTERS('Feature Usage Weekly'[complete week] = 1)) RETURN DIVIDE(CALCULATE([Feature People (weekly)], KEEPFILTERS('Feature Usage Weekly'[complete week] = 1)), wks)
+
+'Features Used (last full week)' =
+    VAR w = [Last Full Week (Monday)] RETURN CALCULATE(DISTINCTCOUNT('Feature Usage Weekly'[feature]), KEEPFILTERS('Feature Usage Weekly'[is feature] = 1), 'Feature Usage Weekly'[week start] = w)
+
+'Active People (weekly)' =
+    CALCULATE(SUM('Feature Usage Weekly'[people]), REMOVEFILTERS('Feature List'), 'Feature Usage Weekly'[feature] = "Any activity")
+
+'New People (weekly)' =
+    CALCULATE(SUM('Feature Usage Weekly'[new people]), REMOVEFILTERS('Feature List'), 'Feature Usage Weekly'[feature] = "Any activity")
+
+'Returning People (weekly)' =
+    CALCULATE(SUM('Feature Usage Weekly'[returning people]), REMOVEFILTERS('Feature List'), 'Feature Usage Weekly'[feature] = "Any activity")
+
+'Signed In People (weekly)' =
+    CALCULATE(SUM('Feature Usage Weekly'[signed in people]), REMOVEFILTERS('Feature List'), 'Feature Usage Weekly'[feature] = "Any activity")
+
+'Signed In New People (weekly)' =
+    CALCULATE(SUM('Feature Usage Weekly'[signed in new people]), REMOVEFILTERS('Feature List'), 'Feature Usage Weekly'[feature] = "Any activity")
+
+'Signed In Returning People (weekly)' =
+    [Signed In People (weekly)] - [Signed In New People (weekly)]
+
+'Active People (last full week)' =
+    VAR w = [Last Full Week (Monday)] RETURN CALCULATE([Active People (weekly)], 'Feature Usage Weekly'[week start] = w)
+
+'Signed In People (last full week)' =
+    VAR w = [Last Full Week (Monday)] RETURN CALCULATE([Signed In People (weekly)], 'Feature Usage Weekly'[week start] = w)
+
+'Signed In New People (last full week)' =
+    VAR w = [Last Full Week (Monday)] RETURN CALCULATE([Signed In New People (weekly)], 'Feature Usage Weekly'[week start] = w)
+
+'Signed In Returning People (last full week)' =
+    VAR w = [Last Full Week (Monday)] RETURN CALCULATE([Signed In Returning People (weekly)], 'Feature Usage Weekly'[week start] = w)
+
+'Feature Events' =
+    CALCULATE(SUM('Feature Usage Daily'[events]), KEEPFILTERS('Feature Usage Daily'[is feature] = 1))
+
+'Feature People (daily)' =
+    CALCULATE(SUM('Feature Usage Daily'[distinct people]), KEEPFILTERS('Feature Usage Daily'[is feature] = 1))
+
+// ============================================================
+// Social  (24 measures)
+// ============================================================
+
+'People Interacting' =
+    SUM('Social Daily'[people interacting])
+
+'People Interacting Outside Matches' =
+    SUM('Social Daily'[people interacting outside matches])
+
+'Active People (daily)' =
+    SUM('Social Daily'[active people])
+
+'Match Chat Messages' =
+    SUM('Social Daily'[match chat messages])
+
+'Event Chat Posts' =
+    SUM('Social Daily'[event chat posts])
+
+'Community Posts' =
+    SUM('Social Daily'[community posts])
+
+'Team Chat Messages' =
+    SUM('Social Daily'[team chat messages])
+
+'Lounge Messages' =
+    SUM('Social Daily'[lounge messages])
+
+Reactions =
+    SUM('Social Daily'[reactions])
+
+'Friend Requests Sent' =
+    SUM('Social Daily'[friend requests sent])
+
+'Duels Created' =
+    SUM('Social Daily'[duels created])
+
+'New Friendships' =
+    SUM('Social Daily'[new friendships])
+
+'Interactions Outside Matches' =
+    [Event Chat Posts] + [Community Posts] + [Team Chat Messages] + [Reactions] + [Friend Requests Sent] + [Duels Created]
+
+'All Interactions' =
+    [Interactions Outside Matches] + [Match Chat Messages] + [Lounge Messages]
+
+'Complete Days' =
+    CALCULATE(COUNTROWS('Social Daily'), KEEPFILTERS('Social Daily'[complete day] = 1))
+
+'Tournament Days' =
+    CALCULATE(COUNTROWS('Social Daily'), KEEPFILTERS('Social Daily'[complete day] = 1), KEEPFILTERS('Social Daily'[tournament day] = 1))
+
+'Non Tournament Days' =
+    CALCULATE(COUNTROWS('Social Daily'), KEEPFILTERS('Social Daily'[complete day] = 1), KEEPFILTERS('Social Daily'[tournament day] = 0))
+
+'Avg Active People per Day' =
+    CALCULATE(AVERAGE('Social Daily'[active people]), KEEPFILTERS('Social Daily'[complete day] = 1))
+
+'Avg People Interacting per Day' =
+    CALCULATE(AVERAGE('Social Daily'[people interacting]), KEEPFILTERS('Social Daily'[complete day] = 1))
+
+'Avg Interacting Outside Matches per Day' =
+    CALCULATE(AVERAGE('Social Daily'[people interacting outside matches]), KEEPFILTERS('Social Daily'[complete day] = 1))
+
+'Avg People Interacting (tournament days)' =
+    CALCULATE([Avg People Interacting per Day], KEEPFILTERS('Social Daily'[tournament day] = 1))
+
+'Avg People Interacting (non tournament days)' =
+    CALCULATE([Avg People Interacting per Day], KEEPFILTERS('Social Daily'[tournament day] = 0))
+
+'Share of Active People Interacting' =
+    DIVIDE(CALCULATE(SUM('Social Daily'[people interacting]), KEEPFILTERS('Social Daily'[complete day] = 1)), CALCULATE(SUM('Social Daily'[active people]), KEEPFILTERS('Social Daily'[complete day] = 1)))
+
+'Non Tournament Days With Nobody Interacting' =
+    CALCULATE(COUNTROWS('Social Daily'), KEEPFILTERS('Social Daily'[complete day] = 1), KEEPFILTERS('Social Daily'[tournament day] = 0), KEEPFILTERS('Social Daily'[people interacting] = 0))
+
+// ============================================================
+// Social Graph  (14 measures)
+// ============================================================
+
+'Social Snapshot Date' =
+    CALCULATE(MAX('Social Graph Summary'[snapshot date]), REMOVEFILTERS('Social Graph Summary'))
+
+'Social Graph Value (latest)' =
+    VAR d = [Social Snapshot Date] RETURN CALCULATE(SUM('Social Graph Summary'[value]), 'Social Graph Summary'[snapshot date] = d)
+
+'Accounts by Friend Count (latest)' =
+    CALCULATE([Social Graph Value (latest)], KEEPFILTERS('Social Graph Summary'[section] = "friends per account"))
+
+'Active Accounts by Friend Count (latest)' =
+    CALCULATE([Social Graph Value (latest)], KEEPFILTERS('Social Graph Summary'[section] = "friends per active account"))
+
+'Repeat Pairs (latest)' =
+    CALCULATE([Social Graph Value (latest)], KEEPFILTERS('Social Graph Summary'[section] = "repeat pairs"))
+
+'DM Pairs by Days Talked (latest)' =
+    CALCULATE([Social Graph Value (latest)], KEEPFILTERS('Social Graph Summary'[section] = "DM pairs by days talked"))
+
+'DM Pairs by Direction (latest)' =
+    CALCULATE([Social Graph Value (latest)], KEEPFILTERS('Social Graph Summary'[section] = "DM pairs by direction"))
+
+'Social Totals (latest)' =
+    CALCULATE([Social Graph Value (latest)], KEEPFILTERS('Social Graph Summary'[section] = "totals"))
+
+'Mutual Friend Pairs (latest)' =
+    CALCULATE([Social Graph Value (latest)], KEEPFILTERS('Social Graph Summary'[section] = "totals"), KEEPFILTERS('Social Graph Summary'[bucket] = "mutual friend pairs"))
+
+'People With a Friend (latest)' =
+    CALCULATE([Social Graph Value (latest)], KEEPFILTERS('Social Graph Summary'[section] = "totals"), KEEPFILTERS('Social Graph Summary'[bucket] = "people with 1+ friend"))
+
+'DM Pairs (all time)' =
+    CALCULATE([Social Graph Value (latest)], KEEPFILTERS('Social Graph Summary'[section] = "totals"), KEEPFILTERS('Social Graph Summary'[bucket] = "DM pairs"))
+
+'Social Graph Shown (latest)' =
+    VAR d = [Social Snapshot Date] VAR n = CALCULATE(COUNTROWS('Social Graph Summary'), 'Social Graph Summary'[snapshot date] = d) VAR v = CALCULATE(SUM('Social Graph Summary'[value]), 'Social Graph Summary'[snapshot date] = d) VAR t = CALCULATE(SELECTEDVALUE('Social Graph Summary'[value shown]), 'Social Graph Summary'[snapshot date] = d) RETURN IF(n > 0 && HASONEVALUE('Social Graph Summary'[bucket]), IF(ISBLANK(v), IF(ISBLANK(t), "under 10", t), FORMAT(v, "#,0")))
+
+'Social Totals Shown (latest)' =
+    CALCULATE([Social Graph Shown (latest)], KEEPFILTERS('Social Graph Summary'[section] = "totals"))
+
+'DM Pairs Shown (latest)' =
+    CALCULATE([Social Graph Shown (latest)], KEEPFILTERS('Social Graph Summary'[section] = "DM pairs by days talked" || 'Social Graph Summary'[section] = "DM pairs by direction"))
+
+// ============================================================
+// DMs  (4 measures)
+// ============================================================
+
+'DM Last Full Month' =
+    CALCULATE(MAX('DM Monthly'[month]), KEEPFILTERS('DM Monthly'[complete month] = 1))
+
+'DM Messages Shown (last full month)' =
+    VAR m = [DM Last Full Month] VAR v = CALCULATE(SUM('DM Monthly'[dm messages]), 'DM Monthly'[month] = m) VAR t = CALCULATE(SELECTEDVALUE('DM Monthly'[DM messages shown]), 'DM Monthly'[month] = m) RETURN IF(ISBLANK(m), BLANK(), IF(ISBLANK(v), IF(ISBLANK(t), "under 10", t), FORMAT(v, "#,0")))
+
+'DM Pairs Shown (last full month)' =
+    VAR m = [DM Last Full Month] VAR v = CALCULATE(SUM('DM Monthly'[dm pairs active]), 'DM Monthly'[month] = m) VAR t = CALCULATE(SELECTEDVALUE('DM Monthly'[DM pairs shown]), 'DM Monthly'[month] = m) RETURN IF(ISBLANK(m), BLANK(), IF(ISBLANK(v), IF(ISBLANK(t), "under 10", t), FORMAT(v, "#,0")))
+
+'DM Senders Shown (last full month)' =
+    VAR m = [DM Last Full Month] VAR v = CALCULATE(SUM('DM Monthly'[dm senders]), 'DM Monthly'[month] = m) VAR t = CALCULATE(SELECTEDVALUE('DM Monthly'[DM senders shown]), 'DM Monthly'[month] = m) RETURN IF(ISBLANK(m), BLANK(), IF(ISBLANK(v), IF(ISBLANK(t), "under 10", t), FORMAT(v, "#,0")))

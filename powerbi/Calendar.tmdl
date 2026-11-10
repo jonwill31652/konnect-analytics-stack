@@ -1,0 +1,55 @@
+table Calendar
+	lineageTag: 12fca266-7da3-41b0-9a8b-819fc7c99fe9
+	dataCategory: Time
+
+	column Date
+		isUnique
+		lineageTag: 455a72a9-f211-406b-ab4c-ee8c6b3deab0
+		isNameInferred
+		sourceColumn: [Date]
+
+	column Year
+		lineageTag: b40d0259-cb6e-43ea-9932-cd93fc8f4f51
+		isNameInferred
+		sourceColumn: [Year]
+
+	column Month
+		lineageTag: fbdf52a2-2d55-4b9e-b90e-1763281c0c0e
+		isNameInferred
+		sourceColumn: [Month]
+		sortByColumn: 'Month Sort'
+
+	column 'Month Sort'
+		lineageTag: bf3664c9-d5b2-4b4a-b31e-f1a3c26807b8
+		isNameInferred
+		sourceColumn: [Month Sort]
+
+	column 'Week Start'
+		lineageTag: 228a9978-9745-459a-b74e-089d452d89bb
+		isNameInferred
+		sourceColumn: [Week Start]
+
+	column Weekday
+		lineageTag: eb5579d1-47c2-4168-8f09-37dc7bbd82a9
+		isNameInferred
+		sourceColumn: [Weekday]
+		sortByColumn: 'Weekday Sort'
+
+	column 'Weekday Sort'
+		lineageTag: 9c2286ae-d459-4e2b-b706-e734ea114490
+		isNameInferred
+		sourceColumn: [Weekday Sort]
+
+	partition Calendar = calculated
+		mode: import
+		source =
+				ADDCOLUMNS(
+				    CALENDAR(DATE(2026,6,1), DATE(2026,11,30)),
+				    "Year", YEAR([Date]),
+				    "Month", FORMAT([Date], "mmm yyyy"),
+				    "Month Sort", YEAR([Date]) * 100 + MONTH([Date]),
+				    "Week Start", [Date] - WEEKDAY([Date], 3),
+				    "Weekday", FORMAT([Date], "ddd"),
+				    "Weekday Sort", WEEKDAY([Date], 2)
+				)
+
