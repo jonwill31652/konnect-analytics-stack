@@ -6,7 +6,7 @@ keep only the allowlisted fields, scrub every document, then refuse to write a
 single row unless privacy_scan() comes back clean. The output CSVs are what the
 Power BI model loads; they contain pseudonyms only.
 
-A Windows scheduled task runs this every six hours (see docs/architecture.md).
+A Windows scheduled task is set to run the production version of this every six hours, behind guards (see docs/architecture.md).
 This is a sanitized skeleton: auth, retry/backoff, and the real field allowlist
 live in config.py (not committed). Nothing here is Konnect-specific beyond the
 collection names.

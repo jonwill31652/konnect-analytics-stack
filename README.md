@@ -34,9 +34,9 @@ Secrets (the salt, the GCP token, the project id) are read from environment vari
 
 The measures and model back three case studies on the portfolio:
 
-- **Data engineering** - the pipeline above, refreshed every six hours.
-- **Business intelligence** - the semantic model, KPIs defined explicitly (activation, check in, repeat entrant), seven report pages.
-- **Player retention** - a first event cohort showing players whose first live event drew 8+ entrants returned at 43% (n=273) versus 29% (n=97), which drove a schedule consolidation.
+- **Data engineering**: the pipeline above, with the export scheduled every six hours.
+- **Business intelligence**: the semantic model, KPIs defined explicitly (activation, check in, repeat entrant), seven report pages.
+- **Player retention**: a first event cohort in which players whose first live event drew 8+ entrants returned at 46% (n=239) versus 34% (n=79), with test events and staff accounts excluded and two weeks allowed to return. A directional signal at this sample size (p = 0.07) that backed a low risk decision to consolidate the schedule.
 
 ## Tech
 
